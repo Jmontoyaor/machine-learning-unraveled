@@ -4,7 +4,7 @@
 
 | Forma | Qué hace | Cómo se abre |
 | --- | --- | --- |
-| **Página web** | Dibujar, usar la cámara o subir una imagen; ver la corrección a fondo negro y trazo blanco, las predicciones de ambas redes y todas las métricas. No instala nada. | <https://jmontoyaor.github.io/machine-learning-unraveled/mnist/> |
+| **Página web** | Dibujar, usar la cámara o subir una imagen; ver la corrección a fondo negro y trazo blanco, las predicciones de ambas redes y todas las métricas. No instala nada. | <https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/> |
 | **App local (localhost)** | Lo mismo que la página web (sin cámara) y, además, **entrenar** las redes desde la interfaz. | Doble clic en `iniciar_app.bat` (Windows) o `./iniciar_app.sh` (Linux/macOS). Se abre <http://localhost:8501>. |
 | **Versión original OpenCV** | Cámara en tiempo real con osciloscopio (`app_cam.py`, `train.py`). Se conserva sin cambios. | Ver [README.md](README.md). |
 

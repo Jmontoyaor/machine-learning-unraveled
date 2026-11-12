@@ -1,7 +1,7 @@
 # Sistema de Clasificación de Dígitos en Tiempo Real con OpenCV y Osciloscopio de Accuracy
 
 > **Versión nueva de la actividad:**
-> - En el navegador, sin instalar nada: <https://jmontoyaor.github.io/machine-learning-unraveled/mnist/>
+> - En el navegador, sin instalar nada: <https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/>
 > - En localhost, con entrenamiento: ejecuta `iniciar_app.bat` (Windows) o `iniciar_app.sh` (Linux/macOS) y abre <http://localhost:8501>.
 > - Guía completa: [README_WEB.md](README_WEB.md).
 >
