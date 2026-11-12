@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MNIST densa vs CNN</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Actividad 1: red densa y red convolucional sobre MNIST, ejecutadas en el navegador.">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5b6577; --line: #dde1e8;
+  --accent: #2557d6; --accent-soft: #e6edff; --warn-bg: #fff6e0; --warn: #7a5300;
+  --dense: #2557d6; --cnn: #c2410c; --val: #64748b; --ok: #15803d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11141a; --panel: #1a1f28; --text: #e6e9ef; --muted: #9aa4b5; --line: #2c3340;
+    --accent: #7ea2ff; --accent-soft: #1f2a44; --warn-bg: #3a2e12; --warn: #f5cf7a;
+    --dense: #7ea2ff; --cnn: #fb923c; --val: #94a3b8; --ok: #4ade80;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 20px 16px 8px; max-width: 1280px; margin: 0 auto; }
+header h1 { margin: 0 0 4px; font-size: 1.5rem; }
+header p { margin: 0; color: var(--muted); }
+a { color: var(--accent); }
+main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+main > *, .two > * { min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+aside.panel { position: sticky; top: 12px; }
+@media (max-width: 900px) { aside.panel { position: static; } }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+h3 { font-size: 1rem; margin: 20px 0 8px; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+.seg { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 10px; margin-bottom: 12px; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--text); padding: 7px 4px; border-radius: 7px; cursor: pointer; font: inherit; }
+.seg button[aria-selected="true"] { background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,.15); font-weight: 600; }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 7px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+label { font-size: 0.9rem; }
+select { font: inherit; padding: 5px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+#draw { touch-action: none; border-radius: 8px; border: 1px solid var(--line); width: 100%; max-width: 280px; aspect-ratio: 1; cursor: crosshair; display: block; }
+.cam-wrap { position: relative; width: 100%; max-width: 280px; aspect-ratio: 1; background: #000; border-radius: 8px; overflow: hidden; }
+.cam-wrap video { width: 100%; height: 100%; object-fit: cover; }
+.cam-guide { position: absolute; inset: 20%; border: 2px dashed #ffd400; border-radius: 6px; pointer-events: none; }
+canvas.px { image-rendering: pixelated; background: #000; border-radius: 4px; }
+.preview { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+.status { padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); font-size: 0.9rem; margin-top: 10px; }
+.status.warn { background: var(--warn-bg); color: var(--warn); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.tabs button { border: 0; background: none; color: var(--muted); padding: 10px 12px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+section[hidden] { display: none; }
+.steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+@media (max-width: 600px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+.steps figure { margin: 0; }
+.steps canvas { width: 100%; aspect-ratio: 1; object-fit: contain; }
+figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+.gallery { display: flex; gap: 8px; flex-wrap: wrap; }
+.gallery figure { margin: 0; text-align: center; }
+.gallery canvas { width: 72px; height: 72px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 10px 0; }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.kpi b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 0.85rem; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.88rem; }
+th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: right; }
+th:first-child, td:first-child { text-align: left; }
+.table-wrap { overflow-x: auto; }
+.cm td { text-align: center; padding: 3px; min-width: 34px; font-size: 0.78rem; border: 1px solid var(--line); }
+.cm th { text-align: center; font-size: 0.78rem; }
+.pixels { font-family: ui-monospace, Consolas, monospace; font-size: 9px; border-collapse: collapse; }
+.pixels td { width: 22px; height: 16px; padding: 0; text-align: center; border: 0; }
+.bars { display: grid; gap: 3px; }
+.bar { display: grid; grid-template-columns: 18px 1fr 66px; white-space: nowrap; gap: 6px; align-items: center; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.bar .track { background: var(--bg); border-radius: 4px; height: 14px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--accent); }
+.bar.top .fill { background: var(--ok); }
+.pred { font-size: 2.6rem; font-weight: 700; line-height: 1; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
+.chart { width: 100%; height: 190px; }
+.chart text { fill: var(--muted); font-size: 10px; }
+.legend { display: flex; gap: 12px; font-size: 0.82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: 4px; }
+code, pre { font-family: ui-monospace, Consolas, monospace; background: var(--bg); border-radius: 6px; }
+pre { padding: 10px; overflow-x: auto; }
+code { padding: 1px 4px; }
+.note { background: var(--warn-bg); color: var(--warn); padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; }
+details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
+.formula { font-family: Georgia, "Times New Roman", serif; font-size: 1.02rem; background: var(--bg); padding: 8px 12px; border-radius: 8px; display: inline-block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MNIST: red densa y red convolucional</h1>
+  <p>Actividad 1 · Las dos redes de <code>scratchpad.py</code>, entrenadas en Python y ejecutadas aquí en tu navegador.
+     <a href="https://github.com/Jmontoyaor/machine-learning-unraveled/tree/main/Actividad/Actividades%201">Código en GitHub</a></p>
+</header>
+<main>
+  <aside class="panel" aria-label="Dígito de entrada">
+    <h2>Dígito de entrada</h2>
+    <div class="seg" role="tablist" id="sourceTabs">
+      <button role="tab" data-source="draw" aria-selected="true">Dibujar</button>
+      <button role="tab" data-source="camera" aria-selected="false">Cámara</button>
+      <button role="tab" data-source="upload" aria-selected="false">Imagen</button>
+    </div>
+
+    <div id="src-draw">
+      <canvas id="draw" width="280" height="280" aria-label="Lienzo para dibujar un dígito"></canvas>
+      <div class="row">
+        <button class="btn" id="clear">Borrar</button>
+        <label><input type="checkbox" id="whiteOnBlack" checked> Blanco sobre negro</label>
+      </div>
+    </div>
+
+    <div id="src-camera" hidden>
+      <div class="cam-wrap"><video id="video" playsinline muted></video><div class="cam-guide"></div></div>
+      <div class="row">
+        <button class="btn primary" id="camStart">Iniciar cámara</button>
+        <button class="btn" id="camShot" disabled>Capturar</button>
+        <label><input type="checkbox" id="camLive"> En vivo</label>
+      </div>
+      <p class="muted">Escribe el número con marcador oscuro sobre papel blanco y ubícalo dentro del recuadro amarillo. La imagen no sale de tu equipo.</p>
+    </div>
+
+    <div id="src-upload" hidden>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/bmp,image/webp">
+      <p class="muted">PNG, JPEG, BMP o WEBP de un solo dígito.</p>
+    </div>
+
+    <div class="row">
+      <label for="polarity">Polaridad</label>
+      <select id="polarity">
+        <option value="auto">Automática</option>
+        <option value="invert">Invertir colores</option>
+        <option value="keep">Mantener colores</option>
+      </select>
+    </div>
+    <div class="preview">
+      <canvas id="final" class="px" width="28" height="28" style="width:112px;height:112px" aria-label="Imagen 28 por 28 que recibe la red"></canvas>
+      <div class="muted">Lo que recibe la red:<br>28×28, fondo 0 (negro), trazo 1 (blanco).</div>
+    </div>
+    <div id="status" class="status">Dibuja un dígito para empezar.</div>
+  </aside>
+
+  <div class="panel">
+    <nav class="tabs" role="tablist" id="mainTabs">
+      <button role="tab" data-tab="polarity" aria-selected="true">Fondo negro y trazo blanco</button>
+      <button role="tab" data-tab="dense" aria-selected="false">Red densa</button>
+      <button role="tab" data-tab="cnn" aria-selected="false">Red convolucional</button>
+      <button role="tab" data-tab="compare" aria-selected="false">Comparación</button>
+    </nav>
+
+    <section id="tab-polarity">
+      <h2>Cómo «ve» la red un dígito</h2>
+      <p>Para la red, una imagen es <b>una tabla de números</b>. En MNIST cada píxel vale entre 0 y 1:</p>
+      <ul>
+        <li><b>0 = negro = fondo</b> (no hay tinta).</li>
+        <li><b>1 = blanco = trazo</b> (tinta máxima).</li>
+        <li><b>Valores intermedios = bordes grises</b> del trazo.</li>
+      </ul>
+      <p>Blanco y negro <b>no</b> significan «reconocido» o «no reconocido»: solo indican dónde hay tinta. Las redes aprendieron con esta convención, así que <b>toda entrada se convierte a ella</b> antes de predecir. Un número negro sobre papel blanco tiene los valores al revés (fondo = 1) y la red vería algo que nunca vio al entrenar.</p>
+      <h3>Así son los datos reales de MNIST</h3>
+      <div class="gallery" id="samples"></div>
+      <details><summary>Ver los 784 números del primer ejemplo</summary><div class="table-wrap" id="samplePixels"></div></details>
+      <h3>Tu entrada, paso a paso</h3>
+      <div id="stepsEmpty" class="muted">Dibuja, captura o carga un dígito para ver la transformación.</div>
+      <div class="steps" id="steps" hidden>
+        <figure><canvas class="px" id="st-grayscale"></canvas><figcaption>1. Escala de grises</figcaption></figure>
+        <figure><canvas class="px" id="st-polarity"></canvas><figcaption id="cap-polarity">2. Polaridad</figcaption></figure>
+        <figure><canvas class="px" id="st-cropped"></canvas><figcaption>3. Recorte del trazo</figcaption></figure>
+        <figure><canvas class="px" id="st-boxed"></canvas><figcaption>4. Cabe en 20×20 sin deformar</figcaption></figure>
+        <figure><canvas class="px" id="st-final"></canvas><figcaption>5. Centrada por masa en 28×28</figcaption></figure>
+      </div>
+      <p class="muted" id="polarityNote"></p>
+      <details id="finalPixelsBox" hidden><summary>Ver los 784 números que recibe la red</summary><div class="table-wrap" id="finalPixels"></div></details>
+      <h3>Fórmulas</h3>
+      <p>Normalización (una sola vez): <span class="formula">x = p / 255,&nbsp; p ∈ {0, …, 255}</span></p>
+      <p>Inversión de polaridad: <span class="formula">p′ = 255 − p</span></p>
+      <p>Centro de masa: <span class="formula">r̄ = Σ r·x<sub>r,c</sub> / Σ x<sub>r,c</sub>,&nbsp; c̄ = Σ c·x<sub>r,c</sub> / Σ x<sub>r,c</sub></span> — la imagen se desplaza para que (r̄, c̄) = (14, 14), igual que en MNIST.</p>
+      <p>Con cámara se agrega una limpieza: el umbral de Otsu separa automáticamente papel y tinta, y los grises del papel o de las sombras pasan a 0.</p>
+    </section>
+
+    <section id="tab-dense" hidden>
+      <h2>Red densa (perceptrón multicapa)</h2>
+      <p>La imagen de 28×28 se <b>aplana</b>: las 28 filas se colocan una detrás de otra y queda un vector de <b>784 números</b>. Cada neurona de una capa densa mira <b>todos</b> esos números a la vez, los multiplica por pesos, suma un sesgo y aplica ReLU. La última capa usa softmax para producir 10 probabilidades que suman 1.</p>
+      <p><span class="formula">h = max(0, W·x + b)</span> &nbsp; <span class="formula">p<sub>k</sub> = e<sup>z<sub>k</sub></sup> / Σ<sub>j</sub> e<sup>z<sub>j</sub></sup></span></p>
+      <pre>Input(784) → Dense(64, relu) → Dense(64, relu) → Dense(10, softmax)</pre>
+      <div id="flatWrap" hidden><p class="muted">Tu dígito convertido en las 784 entradas (fila tras fila):</p><canvas id="flat" class="px" width="784" height="1" style="width:100%;height:24px"></canvas></div>
+      <div data-model="dense"></div>
+    </section>
+
+    <section id="tab-cnn" hidden>
+      <h2>Red convolucional</h2>
+      <p>En lugar de aplanar desde el principio, la CNN conserva la forma 28×28. Cada <b>filtro</b> es una ventana de 3×3 pesos que se desliza por la imagen y responde fuerte donde encuentra su patrón (un borde, una curva). El resultado es un <b>mapa de características</b>. Sin padding, cada convolución 3×3 reduce el tamaño en 2: 28 → 26 → 24. Después <code>Flatten</code> convierte los 24×24×64 valores en un vector y la capa softmax decide la clase.</p>
+      <p><span class="formula">y<sub>i,j</sub> = ReLU( Σ<sub>u,v</sub> w<sub>u,v</sub> · x<sub>i+u, j+v</sub> + b )</span></p>
+      <pre>Input(28×28×1) → Conv2D(32, 3×3, relu) → Conv2D(64, 3×3, relu) → Flatten → Dense(10, softmax)</pre>
+      <p class="muted">Sin pooling ni dropout: arquitectura fiel a <code>scratchpad.py</code>. Por eso casi todos los parámetros están en la capa final (36 864 × 10 + 10).</p>
+      <div data-model="cnn"></div>
+      <h3>Qué aprendió la primera capa</h3>
+      <p class="muted">16 de los 32 filtros 3×3 (claro = peso positivo, oscuro = negativo). Son pesos aprendidos, no etiquetas con significado humano.</p>
+      <div class="gallery" id="filters"></div>
+      <h3>Mapas de activación de tu dígito</h3>
+      <p class="muted">Salida 26×26 de 8 filtros: las zonas claras indican dónde el filtro encontró su patrón.</p>
+      <div class="gallery" id="maps"><span class="muted">Dibuja, captura o carga un dígito.</span></div>
+    </section>
+
+    <section id="tab-compare" hidden>
+      <h2>Comparación sobre el mismo conjunto de prueba</h2>
+      <p class="muted" id="splitNote"></p>
+      <div class="table-wrap" id="compareTable"></div>
+      <h3>Tu dígito en ambas redes</h3>
+      <div class="two">
+        <div><b>Red densa</b><div id="cmp-dense" class="muted">Sin entrada.</div></div>
+        <div><b>Red convolucional</b><div id="cmp-cnn" class="muted">Sin entrada.</div></div>
+      </div>
+      <p class="note">Las métricas vienen del conjunto de prueba (10 000 imágenes que las redes nunca vieron al entrenar). La predicción de tu dibujo es <b>un solo caso</b>. Una probabilidad softmax alta <b>no garantiza</b> que el resultado sea correcto ni detecta imágenes que no son dígitos: la red siempre reparte el 100 % entre las 10 clases.</p>
+      <div class="two">
+        <div id="detail-dense"></div>
+        <div id="detail-cnn"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="model_data.js"></script>
+<script src="mnist_core.js"></script>
+<script>
+(function () {
+  "use strict";
+  var DATA = window.MNIST_DATA, Core = window.MnistCore;
+  var NAMES = { dense: "Red densa", cnn: "Red convolucional" };
+  var $ = function (id) { return document.getElementById(id); };
+  var fmtPct = function (v) { return (v * 100).toFixed(2) + " %"; };
+  var fmtInt = function (v) { return Math.round(v).toLocaleString("es-CO"); };
+  var css = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+
+  if (!DATA || !Core) { $("status").textContent = "No se pudieron cargar los modelos."; $("status").className = "status warn"; return; }
+  var MODELS = { dense: Core.loadModel(DATA.models.dense), cnn: Core.loadModel(DATA.models.cnn) };
+
+  /* ------------------------------------------------ drawing helpers */
+  function paintGray(canvas, data, w, h, scale) {
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext("2d"), img = ctx.createImageData(w, h);
+    for (var i = 0; i < w * h; i++) {
+      var v = Math.max(0, Math.min(255, Math.round(data[i] * (255 / scale))));
+      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+  }
+  function thumb(data, w, h, scale, caption, size) {
+    var fig = document.createElement("figure"), c = document.createElement("canvas");
+    c.className = "px"; paintGray(c, data, w, h, scale);
+    if (size) { c.style.width = size + "px"; c.style.height = size + "px"; }
+    fig.appendChild(c);
+    if (caption) { var cap = document.createElement("figcaption"); cap.textContent = caption; fig.appendChild(cap); }
+    return fig;
+  }
+  function pixelTable(img) {
+    var html = "<table class='pixels'>";
+    for (var r = 0; r < 28; r++) {
+      html += "<tr>";
+      for (var c = 0; c < 28; c++) {
+        var v = img[r * 28 + c], g = Math.round(v * 255);
+        html += "<td style='background:rgb(" + g + "," + g + "," + g + ");color:" + (v > 0.5 ? "#000" : "#888") + "'>" + v.toFixed(1) + "</td>";
+      }
+      html += "</tr>";
+    }
+    return html + "</table>";
+  }
+  function bars(probs) {
+    var top = 0;
+    for (var k = 1; k < 10; k++) if (probs[k] > probs[top]) top = k;
+    var html = "<div class='pred'>" + top + "</div><div class='muted'>" + fmtPct(probs[top]) + " según softmax</div><div class='bars'>";
+    for (k = 0; k < 10; k++) html += "<div class='bar" + (k === top ? " top" : "") + "'><span>" + k + "</span><div class='track'><div class='fill' style='width:" + (probs[k] * 100).toFixed(1) + "%'></div></div><span>" + fmtPct(probs[k]) + "</span></div>";
+    return html + "</div>";
+  }
+  function lineChart(series, title) {
+    var W = 420, H = 190, P = { l: 40, r: 10, t: 10, b: 24 }, all = [];
+    series.forEach(function (s) { all = all.concat(s.values); });
+    var min = Math.min.apply(null, all), max = Math.max.apply(null, all);
+    if (max - min < 1e-9) { max += 1; }
+    var n = series[0].values.length;
+    var x = function (i) { return P.l + (n === 1 ? 0 : i * (W - P.l - P.r) / (n - 1)); };
+    var y = function (v) { return P.t + (max - v) * (H - P.t - P.b) / (max - min); };
+    var svg = "<svg class='chart' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='" + title + "'>";
+    for (var t = 0; t <= 4; t++) {
+      var v = min + t * (max - min) / 4, yy = y(v);
+      svg += "<line x1='" + P.l + "' x2='" + (W - P.r) + "' y1='" + yy + "' y2='" + yy + "' stroke='" + css("--line") + "'/><text x='" + (P.l - 4) + "' y='" + (yy + 3) + "' text-anchor='end'>" + v.toFixed(3) + "</text>";
+    }
+    svg += "<text x='" + P.l + "' y='" + (H - 6) + "'>época 1</text><text x='" + (W - P.r) + "' y='" + (H - 6) + "' text-anchor='end'>época " + n + "</text>";
+    series.forEach(function (s) {
+      var d = s.values.map(function (v, i) { return (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); }).join("");
+      svg += "<path d='" + d + "' fill='none' stroke='" + s.color + "' stroke-width='2'" + (s.dash ? " stroke-dasharray='4 3'" : "") + "/>";
+    });
+    svg += "</svg><div class='legend'>" + series.map(function (s) { return "<span><i style='background:" + s.color + "'></i>" + s.name + "</span>"; }).join("") + "</div>";
+    return "<div><b>" + title + "</b>" + svg + "</div>";
+  }
+  function confusion(cm) {
+    var max = 0, html = "<table class='cm'><tr><th>real \\ pred</th>";
+    cm.forEach(function (row) { row.forEach(function (v) { if (v > max) max = v; }); });
+    for (var c = 0; c < 10; c++) html += "<th>" + c + "</th>";
+    html += "</tr>";
+    cm.forEach(function (row, r) {
+      html += "<tr><th>" + r + "</th>";
+      row.forEach(function (v, c) {
+        var a = v ? 0.12 + 0.88 * Math.sqrt(v / max) : 0;
+        var color = r === c ? "37,87,214" : "194,65,12";
+        html += "<td style='background:rgba(" + color + "," + a.toFixed(2) + ");color:" + (a > 0.55 ? "#fff" : "inherit") + "'>" + v + "</td>";
+      });
+      html += "</tr>";
+    });
+    return html + "</table><p class='muted'>Diagonal azul = aciertos; naranja = confusiones.</p>";
+  }
+
+  /* ------------------------------------------------ static content */
+  DATA.samples.forEach(function (s, i) {
+    $("samples").appendChild(thumb(Core.decodeBase64(s.image), 28, 28, 255, "Etiqueta " + s.label, 72));
+  });
+  $("samplePixels").innerHTML = pixelTable(Array.from(Core.decodeBase64(DATA.samples[0].image), function (v) { return v / 255; }));
+
+  ["dense", "cnn"].forEach(function (kind) {
+    var m = DATA.models[kind], cfg = m.config, color = css(kind === "dense" ? "--dense" : "--cnn");
+    var rows = m.layers.filter(function (l) { return l.type !== "InputLayer"; }).map(function (l) {
+      return "<tr><td>" + l.name + " <span class='muted'>(" + l.type + ")</span></td><td>(" + l.output_shape.join(", ") + ")</td><td>" + fmtInt(l.params) + "</td></tr>";
+    }).join("");
+    var host = document.querySelector("[data-model='" + kind + "']");
+    host.innerHTML =
+      "<h3>Arquitectura real</h3><div class='table-wrap'><table><tr><th>Capa</th><th>Forma de salida</th><th>Parámetros</th></tr>" + rows +
+      "<tr><th>Total</th><th></th><th>" + fmtInt(m.parameters) + "</th></tr></table></div>" +
+      "<h3>Entrenamiento</h3><p class='muted'>Adam · sparse_categorical_crossentropy · " + cfg.epochs + " épocas · lote " + cfg.batch_size + " · semilla " + cfg.seed +
+      " · " + fmtInt(cfg.train_samples) + " ejemplos de entrenamiento, " + fmtInt(cfg.validation_samples) + " de validación · " + Math.round(cfg.training_seconds) + " s en CPU. Estado: <b>entrenado y disponible</b>.</p>" +
+      "<div class='two'>" +
+      lineChart([{ name: "Entrenamiento", values: m.history.loss, color: color }, { name: "Validación", values: m.history.val_loss, color: css("--val"), dash: true }], "Pérdida por época") +
+      lineChart([{ name: "Entrenamiento", values: m.history.accuracy, color: color }, { name: "Validación", values: m.history.val_accuracy, color: css("--val"), dash: true }], "Exactitud por época") +
+      "</div><h3>Evaluación en el conjunto de prueba</h3><div class='kpis'>" +
+      "<div class='kpi'><b>" + fmtPct(m.metrics.accuracy) + "</b><span>Exactitud</span></div>" +
+      "<div class='kpi'><b>" + m.metrics.loss.toFixed(4) + "</b><span>Pérdida</span></div>" +
+      "<div class='kpi'><b>" + m.metrics.macro_f1.toFixed(4) + "</b><span>F1 macro</span></div></div>" +
+      "<h3>Predicción de tu dígito</h3><div id='pred-" + kind + "' class='muted'>Dibuja, captura o carga un dígito.</div>";
+
+    var per = "<h3>" + NAMES[kind] + "</h3><div class='table-wrap'><table><tr><th>Dígito</th><th>Precisión</th><th>Recall</th><th>F1</th></tr>";
+    for (var d = 0; d < 10; d++) {
+      var pc = m.metrics.per_class[d];
+      per += "<tr><td>" + d + "</td><td>" + pc.precision.toFixed(3) + "</td><td>" + pc.recall.toFixed(3) + "</td><td>" + pc["f1-score"].toFixed(3) + "</td></tr>";
+    }
+    per += "</table></div><h3>Matriz de confusión</h3><div class='table-wrap'>" + confusion(m.metrics.confusion_matrix) + "</div><h3>Errores reales del conjunto de prueba</h3><div class='gallery' id='errors-" + kind + "'></div>";
+    $("detail-" + kind).innerHTML = per;
+    m.errors.forEach(function (e) {
+      $("errors-" + kind).appendChild(thumb(Core.decodeBase64(e.image), 28, 28, 255, "real " + e.label + " → " + e.prediction, 64));
+    });
+  });
+
+  var d = DATA.models.dense, c = DATA.models.cnn;
+  $("splitNote").textContent = "Misma partición para ambas: " + fmtInt(d.config.train_samples) + " entrenamiento · " + fmtInt(d.config.validation_samples) +
+    " validación (tomada del entrenamiento) · " + fmtInt(d.config.test_samples) + " prueba reservada.";
+  $("compareTable").innerHTML = "<table><tr><th>Métrica</th><th>Red densa</th><th>Red convolucional</th></tr>" +
+    [["Exactitud en prueba", fmtPct(d.metrics.accuracy), fmtPct(c.metrics.accuracy)],
+     ["Pérdida en prueba", d.metrics.loss.toFixed(4), c.metrics.loss.toFixed(4)],
+     ["F1 macro", d.metrics.macro_f1.toFixed(4), c.metrics.macro_f1.toFixed(4)],
+     ["Errores (de 10 000)", fmtInt(10000 * (1 - d.metrics.accuracy)), fmtInt(10000 * (1 - c.metrics.accuracy))],
+     ["Parámetros", fmtInt(d.parameters), fmtInt(c.parameters)],
+     ["Tiempo de entrenamiento (CPU)", Math.round(d.config.training_seconds) + " s", Math.round(c.config.training_seconds) + " s"],
+     ["Épocas / lote", d.config.epochs + " / " + d.config.batch_size, c.config.epochs + " / " + c.config.batch_size]
+    ].map(function (r) { return "<tr><td>" + r.join("</td><td>") + "</td></tr>"; }).join("") + "</table>";
+
+  var conv1 = MODELS.cnn.filter(function (l) { return l.type === "Conv2D"; })[0];
+  var kmin = Infinity, kmax = -Infinity;
+  for (var i = 0; i < conv1.kernelData.length; i++) { kmin = Math.min(kmin, conv1.kernelData[i]); kmax = Math.max(kmax, conv1.kernelData[i]); }
+  for (var f = 0; f < 16; f++) {
+    var w9 = new Float32Array(9);
+    for (var j = 0; j < 9; j++) w9[j] = (conv1.kernelData[j * 32 + f] - kmin) / (kmax - kmin);
+    $("filters").appendChild(thumb(w9, 3, 3, 1, "filtro " + (f + 1), 54));
+  }
+
+  /* ------------------------------------------------ tabs */
+  function wireTabs(containerId, attr, onSelect) {
+    var buttons = $(containerId).querySelectorAll("button");
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        buttons.forEach(function (o) { o.setAttribute("aria-selected", o === b ? "true" : "false"); });
+        onSelect(b.getAttribute(attr));
+      });
+    });
+  }
+  wireTabs("mainTabs", "data-tab", function (tab) {
+    ["polarity", "dense", "cnn", "compare"].forEach(function (t) { $("tab-" + t).hidden = t !== tab; });
+  });
+  var currentSource = "draw";
+  wireTabs("sourceTabs", "data-source", function (src) {
+    currentSource = src;
+    ["draw", "camera", "upload"].forEach(function (s) { $("src-" + s).hidden = s !== src; });
+    if (src !== "camera") stopCamera();
+    if (src === "draw") runFromDrawing();
+  });
+
+  /* ------------------------------------------------ inference pipeline */
+  var lastGray = null;
+  function grayFromCanvas(canvas) {
+    var ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+    var px = ctx.getImageData(0, 0, w, h).data, gray = new Uint8Array(w * h);
+    for (var i = 0; i < w * h; i++) {
+      var a = px[i * 4 + 3] / 255; // transparent pixels become white paper
+      var lum = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+      gray[i] = Math.round(lum * a + 255 * (1 - a));
+    }
+    return { data: gray, width: w, height: h };
+  }
+  function polarityOption() {
+    var v = $("polarity").value;
+    return v === "auto" ? null : v === "invert";
+  }
+  function setStatus(text, warn) { $("status").textContent = text; $("status").className = "status" + (warn ? " warn" : ""); }
+
+  function clearResults(message) {
+    paintGray($("final"), new Float32Array(784), 28, 28, 1);
+    $("steps").hidden = true; $("stepsEmpty").hidden = false; $("finalPixelsBox").hidden = true; $("flatWrap").hidden = true;
+    $("polarityNote").textContent = "";
+    ["pred-dense", "pred-cnn", "cmp-dense", "cmp-cnn"].forEach(function (id) { $(id).innerHTML = message; $(id).className = "muted"; });
+    $("maps").innerHTML = "<span class='muted'>" + message + "</span>";
+  }
+
+  function run(gray, opts) {
+    lastGray = { gray: gray, opts: opts };
+    var result;
+    try {
+      result = Core.preprocess(gray.data, gray.width, gray.height, { invert: polarityOption(), clean: !!opts.clean });
+    } catch (e) {
+      if (e.message !== Core.EMPTY) throw e;
+      setStatus("Entrada vacía o sin trazo útil: no se hace predicción.", true);
+      clearResults("Entrada vacía: sin predicción.");
+      return;
+    }
+    var img = result.image, info = result.info, steps = info.steps;
+    paintGray($("final"), img, 28, 28, 1);
+    ["grayscale", "polarity", "cropped", "boxed", "final"].forEach(function (k) {
+      paintGray($("st-" + k), steps[k].data, steps[k].width, steps[k].height, steps[k].scale);
+    });
+    $("cap-polarity").textContent = info.inverted ? "2. Invertida → fondo negro" : "2. Sin invertir (ya era fondo negro)";
+    $("steps").hidden = false; $("stepsEmpty").hidden = true; $("finalPixelsBox").hidden = false;
+    $("finalPixels").innerHTML = pixelTable(img);
+    $("polarityNote").textContent = "Detección automática: " + (info.detectedInvert ? "fondo claro → se invierte" : "fondo oscuro → no se invierte") +
+      ". Decisión aplicada: " + (info.inverted ? "invertir" : "mantener") + "." +
+      (info.cleanThreshold != null ? " Limpieza de cámara: umbral de Otsu = " + info.cleanThreshold + "." : "");
+    paintGray($("flat"), img, 784, 1, 1); $("flatWrap").hidden = false;
+
+    var out = {};
+    ["dense", "cnn"].forEach(function (kind) {
+      out[kind] = Core.predict(MODELS[kind], img);
+      var html = bars(out[kind].probabilities);
+      $("pred-" + kind).innerHTML = html; $("pred-" + kind).className = "";
+      $("cmp-" + kind).innerHTML = html; $("cmp-" + kind).className = "";
+    });
+    var act = out.cnn.activations.conv_32 || out.cnn.activations[Object.keys(out.cnn.activations)[0]];
+    $("maps").innerHTML = "";
+    for (var ch = 0; ch < 8; ch++) {
+      var map = new Float32Array(act.h * act.w), mx = 1e-8;
+      for (var p = 0; p < map.length; p++) { map[p] = act.data[p * act.c + ch]; if (map[p] > mx) mx = map[p]; }
+      for (p = 0; p < map.length; p++) map[p] /= mx;
+      $("maps").appendChild(thumb(map, act.w, act.h, 1, "mapa " + (ch + 1), 78));
+    }
+    setStatus("Densa: " + argmax(out.dense.probabilities) + " · CNN: " + argmax(out.cnn.probabilities) + (info.inverted ? " · colores invertidos" : ""));
+  }
+  function argmax(p) { var b = 0; for (var k = 1; k < p.length; k++) if (p[k] > p[b]) b = k; return b; }
+  $("polarity").addEventListener("change", function () { if (lastGray) run(lastGray.gray, lastGray.opts); });
+
+  /* ------------------------------------------------ drawing */
+  var draw = $("draw"), dctx = draw.getContext("2d"), drawing = false, dirty = false, pending = null;
+  function resetCanvas() {
+    var wob = $("whiteOnBlack").checked;
+    dctx.fillStyle = wob ? "#000" : "#fff"; dctx.fillRect(0, 0, 280, 280);
+    dctx.strokeStyle = wob ? "#fff" : "#000"; dctx.lineWidth = 20; dctx.lineCap = "round"; dctx.lineJoin = "round";
+    dirty = false;
+    clearResults("Dibuja un dígito.");
+    setStatus("Dibuja un dígito para empezar.");
+  }
+  function pos(e) { var r = draw.getBoundingClientRect(); return [(e.clientX - r.left) * 280 / r.width, (e.clientY - r.top) * 280 / r.height]; }
+  function runFromDrawing() { if (dirty) run(grayFromCanvas(draw), { clean: false }); else resetCanvas(); }
+  draw.addEventListener("pointerdown", function (e) { drawing = true; draw.setPointerCapture(e.pointerId); var p = pos(e); dctx.beginPath(); dctx.moveTo(p[0], p[1]); dctx.lineTo(p[0] + 0.1, p[1]); dctx.stroke(); dirty = true; });
+  draw.addEventListener("pointermove", function (e) {
+    if (!drawing) return;
+    var p = pos(e); dctx.lineTo(p[0], p[1]); dctx.stroke();
+    if (!pending) pending = setTimeout(function () { pending = null; runFromDrawing(); }, 120);
+  });
+  ["pointerup", "pointercancel"].forEach(function (ev) { draw.addEventListener(ev, function () { if (drawing) { drawing = false; runFromDrawing(); } }); });
+  $("clear").addEventListener("click", resetCanvas);
+  $("whiteOnBlack").addEventListener("change", resetCanvas);
+
+  /* ------------------------------------------------ camera */
+  var stream = null, liveTimer = null, video = $("video"), grab = document.createElement("canvas");
+  grab.width = grab.height = 140;
+  function captureFrame() {
+    if (!stream) { setStatus("Primero inicia la cámara.", true); return; }
+    if (!video.videoWidth) { setStatus("La cámara todavía no envía imagen; espera un momento y vuelve a capturar.", true); return; }
+    var vw = video.videoWidth, vh = video.videoHeight, side = Math.min(vw, vh), roi = side * 0.6;
+    // Same region as the yellow guide: central 60% of the visible square.
+    grab.getContext("2d").drawImage(video, (vw - roi) / 2, (vh - roi) / 2, roi, roi, 0, 0, 140, 140);
+    run(grayFromCanvas(grab), { clean: true });
+  }
+  function stopCamera() {
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    $("camShot").disabled = true; $("camStart").textContent = "Iniciar cámara"; $("camLive").checked = false;
+  }
+  $("camStart").addEventListener("click", function () {
+    if (stream) { stopCamera(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus("Este navegador no permite usar la cámara aquí. Abre la página desde GitHub Pages (https) o desde localhost.", true); return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 640 } }, audio: false })
+      .then(function (s) {
+        stream = s; video.srcObject = s;
+        var playing = video.play();
+        if (playing && playing.catch) playing.catch(function (err) { setStatus("La cámara se abrió pero el video no arranca (" + err.name + ").", true); });
+        $("camShot").disabled = false; $("camStart").textContent = "Detener cámara";
+        setStatus("Cámara activa: ubica el número dentro del recuadro y pulsa Capturar.");
+      })
+      .catch(function (err) { setStatus("No se pudo abrir la cámara (" + err.name + "). Revisa el permiso del navegador.", true); });
+  });
+  $("camShot").addEventListener("click", captureFrame);
+  $("camLive").addEventListener("change", function () {
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+    if ($("camLive").checked) {
+      if (!stream) { $("camLive").checked = false; setStatus("Primero inicia la cámara.", true); return; }
+      liveTimer = setInterval(captureFrame, 400);
+    }
+  });
+
+  /* ------------------------------------------------ upload */
+  $("file").addEventListener("change", function () {
+    var file = $("file").files[0];
+    if (!file) return;
+    var img = new Image();
+    img.onload = function () {
+      var scale = Math.min(1, 400 / Math.max(img.width, img.height));
+      var c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width * scale)); c.height = Math.max(1, Math.round(img.height * scale));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      run(grayFromCanvas(c), { clean: false });
+    };
+    img.onerror = function () { setStatus("No se pudo leer la imagen.", true); };
+    img.src = URL.createObjectURL(file);
+  });
+
+  resetCanvas();
+})();
+</script>
+</body>
+</html>

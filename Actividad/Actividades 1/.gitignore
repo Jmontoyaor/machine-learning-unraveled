@@ -24,3 +24,12 @@ captura_numero_*.png
 # OS
 .DS_Store
 Thumbs.db
+
+# MNIST web app
+# Versioned on purpose (small, needed to run without retraining):
+#   artifacts/mnist_dense.keras, artifacts/mnist_cnn.keras, artifacts/*_results.json
+# Not versioned: training logs, dataset downloads, temporary files.
+artifacts/*.log
+data/
+*.log
+*.tmp

@@ -1,5 +1,13 @@
 # Sistema de Clasificación de Dígitos en Tiempo Real con OpenCV y Osciloscopio de Accuracy
 
+> **Versión nueva de la actividad:**
+> - En el navegador, sin instalar nada: <https://jmontoyaor.github.io/machine-learning-unraveled/mnist/>
+> - En localhost, con entrenamiento: ejecuta `iniciar_app.bat` (Windows) o `iniciar_app.sh` (Linux/macOS) y abre <http://localhost:8501>.
+> - Guía completa: [README_WEB.md](README_WEB.md).
+>
+> Esta guía histórica de la versión con cámara OpenCV se conserva; sus métricas
+> antiguas no describen los resultados nuevos.
+
 Este proyecto implementa la solución completa solicitada a partir de los apuntes manuscritos y el cuaderno Jupyter `scratchpad.ipynb`.
 
 ---
